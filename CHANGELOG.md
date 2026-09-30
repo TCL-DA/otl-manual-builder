@@ -2,6 +2,20 @@
 
 Đánh số theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.1.0] — 2026-09-30
+
+### Thêm
+- `mcp/` — cách cài MCP `illustrator` ([illustrator-mcp-server](https://github.com/ie3jp/illustrator-mcp-server)
+  của ie3jp, MIT, 66 tool), cấu hình dán sẵn, bảng tool chia theo việc, sơ đồ ranh giới
+  *MCP ↔ JSX qua COM*, và **bốn bẫy đã trả giá**: màu chữ đặt qua MCP không ăn · Arial Black
+  thiếu glyph tiếng Việt · artboard có Y dương · khoét hình phải dùng Pathfinder Subtract kèm
+  ép z-order.
+- `skill/illustrator-otl/` — skill lái Illustrator: chọn đường MCP hay JSX, hai kiểu gọi COM,
+  bốn luật bất di bất dịch, snippet đặt màu ký tự và khoét hình.
+
+### Sửa
+- README: thêm mục MCP, bảng hai skill, cập nhật cây thư mục.
+
 ## [1.0.0] — 2026-09-30
 
 Bản đầu tiên công khai.

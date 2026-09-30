@@ -11,7 +11,8 @@ bìa, mục lục tự đánh số trang, hộp cảnh báo ISO 3864, bảng t�
 <img alt="Illustrator" src="https://img.shields.io/badge/Adobe%20Illustrator-CC%2024%2B-FF9A00?style=for-the-badge&logo=adobeillustrator&logoColor=white&labelColor=1a1a1a">
 <img alt="ExtendScript" src="https://img.shields.io/badge/ExtendScript-JSX-E26C0A?style=for-the-badge&labelColor=1a1a1a">
 <img alt="Windows COM" src="https://img.shields.io/badge/Windows-COM%20%2F%20PowerShell-2E74B5?style=for-the-badge&logo=windows&logoColor=white&labelColor=1a1a1a">
-<img alt="Agent Skill" src="https://img.shields.io/badge/Agent%20Skill-Claude%20Code-6F4E37?style=for-the-badge&labelColor=1a1a1a">
+<img alt="Agent Skill" src="https://img.shields.io/badge/Agent%20Skills-2-6F4E37?style=for-the-badge&labelColor=1a1a1a">
+<img alt="MCP" src="https://img.shields.io/badge/MCP-Illustrator%2066%20tools-C0392B?style=for-the-badge&labelColor=1a1a1a">
 </p>
 
 <samp>A4 595.28 × 841.89 pt · tối đa 280 trang / tài liệu · song ngữ VI + EN · xuất .ai và .pdf</samp>
@@ -123,6 +124,28 @@ tài liệu vẫn dựng được khi ảnh chưa đủ.
 
 ---
 
+## 🔌 Lái Illustrator bằng câu lệnh — MCP
+
+Engine dàn trang chạy được mà không cần MCP. Nhưng khi làm **bìa, banner, sơ đồ, ảnh minh hoạ**
+— những thứ phải nhìn rồi sửa — thì để trợ lý đọc thẳng tài liệu đang mở sẽ nhanh hơn nhiều.
+
+```bash
+claude mcp add illustrator --scope user -- npx -y illustrator-mcp-server
+```
+
+Máy chủ dùng ở đây là [`illustrator-mcp-server`](https://github.com/ie3jp/illustrator-mcp-server)
+của ie3jp (MIT, 66 tool) — kho này **không chép lại mã nguồn** của gói đó, `npx` tự tải về.
+Cấu hình dán sẵn, bảng tool chia theo việc, và ranh giới *khi nào dùng MCP · khi nào phải viết
+JSX chạy qua COM* nằm ở **[`mcp/README.md`](mcp/README.md)**.
+
+> [!CAUTION]
+> **Đặt màu chữ qua MCP không ăn.** `create_text_frame(fill=…)` chỉ tô *khung* text, từng ký tự
+> vẫn đen — xuất ra mới biết. Màu chữ, gradient, khoét hình: viết `.jsx` rồi chạy qua COM.
+> Bốn bẫy đầy đủ (kèm Arial Black thiếu glyph tiếng Việt, artboard Y dương) ở
+> [`mcp/README.md`](mcp/README.md#bốn-bẫy-đã-trả-giá).
+
+---
+
 ## 📐 API của engine
 
 | Hàm | Dùng để |
@@ -217,24 +240,33 @@ otl-manual-builder/
 ├── assets/banner/
 │   ├── banner.svg              ← ảnh đầu trang
 │   └── trang-mau.svg           ← sơ đồ cấu trúc trang
-└── skill/manual-otl/           ← thả nguyên thư mục này vào ~/.claude/skills/
-    ├── SKILL.md                ← chỉ dẫn cho trợ lý AI
-    ├── assets/
-    │   └── engine.jsx          ← bộ dàn trang, ~22 KB
-    └── references/
-        ├── style-otl.md                ← khổ, lề, cỡ chữ, màu
-        ├── quan-ly-phien-ban.md        ← đánh số phiên bản, tài liệu song ngữ
-        ├── content-mau-preheat.jsx     ← chương 15 trang đã giao khách (VI)
-        └── content-mau-preheat-EN.jsx  ← bản tiếng Anh cùng phiên bản
+├── mcp/
+│   ├── README.md               ← cài MCP illustrator, bảng 66 tool, 4 bẫy
+│   └── illustrator.mcp.json    ← cấu hình dán sẵn
+└── skill/                      ← thả cả hai thư mục con vào ~/.claude/skills/
+    ├── manual-otl/
+    │   ├── SKILL.md            ← chỉ dẫn dựng manual cho trợ lý AI
+    │   ├── assets/
+    │   │   └── engine.jsx      ← bộ dàn trang, ~22 KB
+    │   └── references/
+    │       ├── style-otl.md                ← khổ, lề, cỡ chữ, màu
+    │       ├── quan-ly-phien-ban.md        ← đánh số phiên bản, tài liệu song ngữ
+    │       ├── content-mau-preheat.jsx     ← chương 15 trang đã giao khách (VI)
+    │       └── content-mau-preheat-EN.jsx  ← bản tiếng Anh cùng phiên bản
+    └── illustrator-otl/
+        └── SKILL.md            ← lái Illustrator qua MCP + chạy JSX qua COM
 ```
 
 </details>
 
 ### Dùng làm Agent Skill
 
-Chép `skill/manual-otl` vào `~/.claude/skills/` là xong — trợ lý sẽ tự gọi skill khi bạn nói
-*"làm hướng dẫn sử dụng"*, *"thêm chương vào manual"*, hay đưa ảnh chụp màn hình HMI kèm yêu
-cầu soạn tài liệu.
+Chép hai thư mục trong `skill/` vào `~/.claude/skills/` là xong:
+
+| Skill | Trợ lý tự gọi khi bạn nói |
+|---|---|
+| **`manual-otl`** | *"làm hướng dẫn sử dụng"*, *"thêm chương vào manual"*, hay đưa ảnh chụp màn hình HMI kèm yêu cầu soạn tài liệu |
+| **`illustrator-otl`** | *"mở Illustrator"*, *"đổi màu chữ trong file .ai"*, *"khoét logo"*, *"xuất PNG từ Illustrator"*, *"chạy jsx"* |
 
 ---
 

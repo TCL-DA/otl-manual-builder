@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "illustrator": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "illustrator-mcp-server"],
+      "env": {}
+    }
+  }
+}
