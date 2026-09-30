@@ -56,13 +56,20 @@ Engine tự đo chiều cao từng khối chữ, tự sang trang, tự điền s
 ## 🏭 Quy trình 7 bước
 
 ```mermaid
-flowchart LR
-    A["1 · Hỏi cho rõ<br/>máy nào, dày bao nhiêu"] --> B["2 · Lấy số từ firmware<br/>không bịa thông số"]
-    B --> C["3 · Đối chiếu ảnh HMI<br/>xem ảnh trước, viết sau"]
-    C --> D["4 · Viết content.jsx<br/>gọi API của engine"]
-    D --> E["5 · Dựng qua COM<br/>render PNG, soi bằng mắt"]
-    E --> F["6 · Giao .ai + .pdf"]
-    F --> G["7 · Chốt phiên bản<br/>VI và EN cùng số"]
+flowchart TB
+    subgraph S1["CHUẨN BỊ"]
+        direction LR
+        A["1 · Hỏi cho rõ<br/>máy nào, dày bao nhiêu"] --> B["2 · Lấy số từ firmware<br/>không bịa thông số"] --> C["3 · Đối chiếu ảnh HMI<br/>xem ảnh trước, viết sau"]
+    end
+    subgraph S2["DỰNG"]
+        direction LR
+        D["4 · Viết content.jsx<br/>gọi API của engine"] --> E["5 · Dựng qua COM<br/>render PNG, soi bằng mắt"]
+    end
+    subgraph S3["GIAO"]
+        direction LR
+        F["6 · Giao .ai + .pdf"] --> G["7 · Chốt phiên bản<br/>VI và EN cùng số"]
+    end
+    S1 --> S2 --> S3
 
     classDef hot  fill:#E26C0A,stroke:#8A3F00,color:#fff,stroke-width:1px
     classDef cool fill:#2E74B5,stroke:#17456F,color:#fff,stroke-width:1px
