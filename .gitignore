@@ -7,3 +7,5 @@ Thumbs.db
 !assets/**/*.png
 build/
 manual.jsx
+__pycache__/
+*.pyc
