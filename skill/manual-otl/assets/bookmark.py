@@ -31,6 +31,19 @@ IT_NHAT = 3            # mot co chu phai lap lai tu ngan nay lan moi coi la cap 
 DAI_NHAT = 120         # dai hon thi la doan van in dam, khong phai tieu de
 
 
+# Tai lieu dung he chu manh (vd Segoe UI Light cho than bai, Semilight cho tieu de) khong co
+# chu "Bold" trong ten font: chi doi "Bold" la bo sot HET tieu de cua nhung ban do.
+# "Light" KHONG nam trong danh sach — do la than bai; "Semilight" thi co.
+FONT_TIEU_DE = ("Bold", "Semibold", "Semilight", "Medium", "Demi")
+
+
+def _la_font_tieu_de(ten):
+    for k in FONT_TIEU_DE:
+        if k in ten:
+            return True
+    return False
+
+
 def _dong_dam(trang):
     """[(co_chu, chu, y)] — cac dong chu DAM cua trang, da gom manh cung mot dong."""
     ra = []
@@ -39,7 +52,7 @@ def _dong_dam(trang):
             continue
         for dong in khoi["lines"]:
             manh = [s for s in dong["spans"] if s["text"].strip()]
-            if not manh or "Bold" not in manh[0]["font"]:
+            if not manh or not _la_font_tieu_de(manh[0]["font"]):
                 continue
             co = round(manh[0]["size"], 1)
             if co < CO_NHO_NHAT:
