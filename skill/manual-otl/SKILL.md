@@ -243,12 +243,48 @@ Quy tắc trình bày:
 - **Ảnh sản phẩm của shop** (minh hoạ dụng cụ): cắt bỏ logo, chữ quảng cáo, huy hiệu trước khi
   đưa vào tài liệu.
 
+## Đổi hệ thiết kế cho một bộ tài liệu — và cỡ chữ cho bản IN
+
+Style mặc định của engine (xanh OTL, Arial) là style của bộ manual cũ. Muốn dựng một bộ theo
+hệ thiết kế khác thì **KHÔNG sửa engine.jsx** — `make.py` nối engine rồi mới tới content, nên
+mọi khai báo trong content đều đè lên engine. Dán khối override vào đầu `content.jsx` là xong,
+các tài liệu khác giữ nguyên style cũ.
+
+Bộ mẫu chạy được: [references/style-te-override.jsx](references/style-te-override.jsx) — hệ công
+nghiệp chữ mảnh (nền `#f6f8f7`, dải tối `#0f0e12`, 0 bo góc, 0 đổ bóng, huy hiệu mục hình vuông,
+bảng ngăn bằng hairline). Ghi đè `decorate / COVER / H1 / H2 / P / PI / BUL / STEP / H3 / SAFETY /
+TABLE / IMG / IMGC / IMG2 / TOCDRAW / COMPANY`.
+
+**Cỡ chữ cho bản in A4, người đọc 50 tuổi** (đo lại trên chính file PDF, 31/10/2026):
+
+| phần | cỡ | màu |
+|---|---|---|
+| thân bài, bước, gạch đầu dòng | **12 pt** / lead 19 | đen thuần |
+| hộp cảnh báo (thân / tiêu đề) | **11,5 / 12 pt** | đen |
+| bảng | **11 pt** / lead 16,5 | đen |
+| chú thích ảnh | 10 pt | `#3a3a3a` |
+| đầu trang, chân trang, số trang | 8 – 9,5 pt | `#3a3a3a` |
+
+Mốc tham chiếu: hướng dẫn in dễ đọc (RNIB clear print) đòi thân bài **tối thiểu 12 pt**;
+"large print" cho người thị lực kém là 16–18 pt. Engine mặc định 11 pt thân bài, **10 pt trong
+hộp cảnh báo** và 9,5 pt trong bảng — tức chỗ quan trọng nhất về an toàn lại là chữ nhỏ nhất.
+Tài liệu giao khách in ra giấy thì phải nâng, đừng để nguyên.
+
+Ba điều kèm theo khi đổi style hoặc tăng cỡ chữ:
+
+- **Chữ nghiêng + xám + nhỏ là tổ hợp khó đọc nhất khi in.** Ghi chú (`PI`) nên để chữ đứng.
+- **Chữ to lên thì phải nới cột bảng và viết lại câu**, nếu không `kiem_xuong_dong.py` báo mồ côi
+  hàng loạt. Ô bảng hẹp: viết câu gọn trong một dòng, hoặc đủ dài để dòng cuối không trơ 1–2 chữ.
+- **Hai ô bảng / hai nhãn nằm sát nhau** (cách < 1,6 dòng) bị `kiem_xuong_dong.py` đọc thành một
+  đoạn rồi báo mồ côi giả. Nới `minRow` hoặc khoảng cách giữa các hàng là hết.
+
 ## Tài nguyên có sẵn
 
 - Bộ dàn trang: [assets/engine.jsx](assets/engine.jsx) — copy sang thư mục build của tài liệu mới.
 - Khung tối thiểu chạy được ngay: [references/content-mau-toi-thieu.jsx](references/content-mau-toi-thieu.jsx).
 - Bản tiếng Anh làm mẫu: [references/content-mau-preheat-EN.jsx](references/content-mau-preheat-EN.jsx).
 - Quy cách trình bày (khổ, lề, cỡ chữ, màu): [references/style-otl.md](references/style-otl.md).
+- Đổi sang hệ thiết kế chữ mảnh + cỡ chữ cho bản in: [references/style-te-override.jsx](references/style-te-override.jsx).
 - **Thông tin công ty** — CHỦ MÁY ĐÃ XÁC NHẬN 30/08/2026, dùng thẳng, KHÔNG hỏi lại:
   CÔNG TY TNHH CÔNG NGHIỆP O TESLA — VP 44 Đường N5, KP. Tân Phước, P. Tân Đông Hiệp, TP. HCM
   — Nhà máy 398/33 ĐT743B, KP Đông Thành, P. Tân Đông Hiệp, TP. HCM — **ĐT 0936 198 938

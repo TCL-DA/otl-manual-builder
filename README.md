@@ -315,6 +315,7 @@ otl-manual-builder/
     │       ├── content-mau-preheat.jsx     ← chương 15 trang đã giao khách (vi)
     │       ├── content-mau-preheat-EN.jsx  ← bản tiếng Anh cùng phiên bản
     │       ├── style-otl.md                ← khổ, lề, cỡ chữ, màu
+│       ├── style-te-override.jsx      ← đổi hệ thiết kế + cỡ chữ cho bản in A4
     │       └── quan-ly-phien-ban.md        ← đánh số phiên bản, tài liệu song ngữ
     └── illustrator-otl/
         └── SKILL.md                    ← lái Illustrator qua MCP + chạy JSX qua COM
@@ -331,7 +332,10 @@ Chép hai thư mục trong `skill/` vào `~/.claude/skills/` là xong:
 
 Bắt đầu một tài liệu mới thì chép
 [`content-mau-toi-thieu.jsx`](skill/manual-otl/references/content-mau-toi-thieu.jsx) —
-bộ khung chạy được ngay, có chú thích từng hàm.
+bộ khung chạy được ngay, có chú thích từng hàm. Muốn một bộ tài liệu mang hệ thiết kế khác
+(nền gần trắng, chữ không chân, 0 bo góc, cỡ chữ cho bản in A4) thì dán thêm
+[`style-te-override.jsx`](skill/manual-otl/references/style-te-override.jsx) vào đầu file —
+không phải sửa `engine.jsx`, các tài liệu khác giữ nguyên style cũ.
 
 ---
 

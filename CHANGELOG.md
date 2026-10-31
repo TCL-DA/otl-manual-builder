@@ -2,6 +2,22 @@
 
 Đánh số theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.3.0] — 2026-10-31
+
+### Thêm
+- `references/style-te-override.jsx` — bộ **đổi hệ thiết kế** dán vào đầu `content.jsx`, không phải
+  sửa `engine.jsx`: nền gần trắng, chữ không chân, 0 bo góc, 0 đổ bóng, dải tối làm nền cho
+  ảnh sản phẩm, huy hiệu mục hình vuông, bảng ngăn bằng hairline. Giữ nguyên 4 màu cảnh báo
+  ISO 3864.
+- SKILL.md: mục **đổi hệ thiết kế + cỡ chữ cho bản IN A4** — bảng cỡ chữ đã đo trên file PDF
+  cho người đọc 50 tuổi (thân bài 12 pt, hộp cảnh báo 11,5 pt, bảng 11 pt, chữ nội dung đen
+  thuần), kèm lý do: engine mặc định để hộp cảnh báo 10 pt — chỗ quan trọng nhất về an toàn
+  lại là chữ nhỏ nhất.
+
+### Sửa
+- `bookmark.py` nhận cả font tiêu đề mảnh (Semilight / Semibold / Medium), không chỉ "Bold" —
+  tài liệu dùng hệ chữ mảnh trước đây ra `bookmark=0`.
+
 ## [1.2.0] — 2026-10-31
 
 ### Thêm
