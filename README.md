@@ -335,6 +335,13 @@ bộ khung chạy được ngay, có chú thích từng hàm.
 
 ---
 
+## giấy phép
+
+[MIT](LICENSE) — dùng lại, sửa, bán kèm sản phẩm đều được, chỉ cần giữ dòng bản quyền.
+Gói MCP `illustrator-mcp-server` là của bên thứ ba (MIT, không chép mã nguồn vào đây).
+
+---
+
 ## quy tắc nội dung
 
 > [!IMPORTANT]

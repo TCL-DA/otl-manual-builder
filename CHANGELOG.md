@@ -13,6 +13,7 @@
 - `assets/bookmark.py` — gắn bookmark cho PDF do Illustrator xuất (Illustrator không bao giờ
   tự sinh). Lọc chữ Arial Bold 19 pt làm mục 1, 12,5 pt làm mục 2, rồi **đọc lại chính file PDF**
   để soát. Chạy riêng được cho PDF cũ.
+- `LICENSE` — MIT.
 - `references/content-mau-toi-thieu.jsx` — khung tối thiểu chạy được ngay, có chú thích từng hàm.
 - Engine: `IMG2` (hai ảnh cạnh nhau cùng chiều cao), `H3TAG` (nhãn phiên bản máy), `ICONROW`
   (hàng biển ISO 7010), `XUAT()` thay ~15 dòng `saveAs`/`PDFSaveOptions` chép tay, mốc số trang
