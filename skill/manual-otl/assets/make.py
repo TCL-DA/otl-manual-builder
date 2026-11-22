@@ -29,6 +29,15 @@ Ba viec script nay lam de nhanh hon:
   2. --nhanh bo buoc luu .ai khi chi can xem bo cuc
   3. nhieu file thi dung CHUNG mot phien PowerShell, khong bat COM lai tung lan
 Va dung tat Illustrator giua chung — bat lai mat 32 s.
+
+── TOC DO: do lai 22/11/2026 tren MAY MOI (Ryzen 7945HX), manual ve sinh 6kg 45 trang ─────
+    Illustrator khoi dong nguoi       ~4,3 s  (khong con 32 s); 3-5 phut DAU sau khi bat thi
+                                              moi lenh cham gap ~2,5 lan (dang nap font/plugin ngam)
+    dung 45 trang                     ~12 s -> ~9 s sau khi toi uu engine.jsx (xem muc TOC DO trong do)
+    luu .pdf                          Acrobat 7 + bo anh thu nho
+    luu .ai                           2,2 s -> 0,7 s, 99 MB -> 13 MB (AI_PDF = false trong engine)
+  Illustrator bao PARM o areaText sau ~10 luot dung lien tiep — loi cua Illustrator, khong phai
+  cua engine (ban engine cu cung bi y het); thoat Illustrator bat lai la het, ham thoat_illustrator lo.
 """
 import io, os, re, subprocess, sys, glob, time
 
@@ -115,8 +124,56 @@ def thoat_illustrator():
     time.sleep(5)
 
 
+GIOI_HAN_GIAY = 1800   # Illustrator khong tra loi sau chung nay -> co hop thoai dang chan
+
+
+def _chay_pywin32(danh_sach_jsx):
+    """Goi COM thang tu Python (do 22/11/2026: ~1,2 s/luot, qua PowerShell ~2,5 s).
+    Tra ve (list ket qua, chuoi loi). Thieu pywin32 thi tra ve None de chay duong PowerShell.
+    Chay trong luong rieng de con dat duoc gioi han thoi gian nhu duong PowerShell."""
+    try:
+        import pythoncom
+        import win32com.client
+    except ImportError:
+        return None
+    import threading
+    kq, loi_ = [], []
+
+    def lam():
+        pythoncom.CoInitialize()
+        try:
+            ai = win32com.client.Dispatch("Illustrator.Application")
+            while ai.Documents.Count > 0:
+                ai.ActiveDocument.Close(2)
+            for f in danh_sach_jsx:
+                kq.append(str(ai.DoJavaScriptFile(f.replace("/", "\\"))).strip())
+        except Exception as e:                  # loi JSX/COM: tra ve nguyen van de bao, khong nuot
+            loi_.append("%s" % (e,))
+        finally:
+            pythoncom.CoUninitialize()
+
+    t = threading.Thread(target=lam, daemon=True)
+    t.start()
+    t.join(GIOI_HAN_GIAY)
+    if t.is_alive():
+        loi("Illustrator khong tra loi sau 30 phut — mo Illustrator xem co hop "
+            "thoai nao dang chan khong")
+    return kq, "".join(loi_)
+
+
 def chay_illustrator(danh_sach_jsx, thu_lai=True):
-    """Dung TAT CA file trong MOT phien PowerShell. Tra ve list ket qua theo thu tu."""
+    """Dung TAT CA file trong MOT phien COM. Tra ve list ket qua theo thu tu.
+    Uu tien pywin32; may khong co pywin32 thi chay qua PowerShell nhu truoc."""
+    r = _chay_pywin32(danh_sach_jsx)
+    if r is not None:
+        kq, loi_com = r
+        if len(kq) != len(danh_sach_jsx) and thu_lai and "PARM" in loi_com:
+            print("  ! Illustrator bao PARM — thoat Illustrator va dung lai mot lan")
+            thoat_illustrator()
+            return chay_illustrator(danh_sach_jsx, thu_lai=False)
+        if len(kq) != len(danh_sach_jsx):
+            loi("Illustrator khong dung du:\n%s" % loi_com.strip()[:1600])
+        return kq
     dong = ["$ErrorActionPreference = 'Stop'",
             "$ai = New-Object -ComObject Illustrator.Application",
             "while ($ai.Documents.Count -gt 0) { $ai.ActiveDocument.Close(2) }"]
@@ -124,8 +181,8 @@ def chay_illustrator(danh_sach_jsx, thu_lai=True):
         dong.append('"<<<KQ>>>" + $ai.DoJavaScriptFile("%s")' % f.replace("/", "\\"))
     ps = "\n".join(dong)
     try:
-        r = subprocess.run(["powershell", "-NonInteractive", "-Command", ps],
-                           capture_output=True, text=True, timeout=1800)
+        r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
+                           capture_output=True, text=True, timeout=GIOI_HAN_GIAY)
     except subprocess.TimeoutExpired:
         loi("Illustrator khong tra loi sau 30 phut — mo Illustrator xem co hop "
             "thoai nao dang chan khong")

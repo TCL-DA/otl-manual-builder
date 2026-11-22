@@ -27,6 +27,53 @@ var C_BLUE = rgb(46, 116, 181), C_TEXT = rgb(35, 35, 35), C_BLACK = rgb(0, 0, 0)
     C_WHITE = rgb(255, 255, 255), C_RED = rgb(192, 0, 0), C_ORANGE = rgb(226, 108, 10),
     C_YELLOW = rgb(255, 192, 0), C_LBLUE = rgb(234, 242, 250), C_RULE = rgb(200, 200, 200);
 
+// ── TỐC ĐỘ (đo 22/11/2026 trên manual vệ sinh 6kg, 45 trang, 1339 khung chữ, 143 ảnh) ──────────
+// 1. Ảnh lặp lại (logo mỗi trang, biểu tượng cảnh báo) chỉ ĐẶT TỪ FILE một lần, các lần sau nhân bản:
+//    placedItems.add + gán file ~34 ms/lần, duplicate ~1,5 ms. Bản sao nằm trên cùng lớp hiện hành,
+//    đúng chỗ ảnh đặt mới. Code gọi đọc lại khung bao rồi tự co về đúng cỡ, nên ảnh gốc to hay nhỏ
+//    cũng không sao.
+var _anhDoc = null, _anhMau = {};
+function datAnh(f) {
+    if (_anhDoc !== doc) { _anhDoc = doc; _anhMau = {}; }
+    var k = f.fsName, m = _anhMau[k];
+    if (m) {
+        try { return m.duplicate(doc.activeLayer, ElementPlacement.PLACEATBEGINNING); }
+        catch (e) {}            // ảnh gốc đã bị content xoá: đặt lại từ file
+    }
+    var pi = doc.placedItems.add();
+    pi.file = f;
+    _anhMau[k] = pi;
+    return pi;
+}
+// 2. Gán font/cỡ/màu cho khung TRƯỚC khi đổ chữ: chữ đổ vào nhận luôn định dạng, Illustrator chỉ dàn
+//    chữ một lần (nhanh hơn ~38 %). Thuộc tính ĐOẠN (canh lề, gạch nối) phải gán SAU khi có chữ —
+//    khung rỗng gán vào báo "Illegal Argument".
+function chuDiem(str, font, size, color) {
+    var t = doc.textFrames.add();
+    var ca = t.textRange.characterAttributes;
+    ca.textFont = app.textFonts.getByName(font);
+    ca.size = size;
+    ca.fillColor = color;
+    t.contents = str;
+    return t;
+}
+// 3. Khung chữ dựng ở vùng đo (y = −3000) để lấy chiều cao thì GIỮ LẠI rồi dời vào chỗ, không xoá đi dựng
+//    lại (bảng, chú thích ảnh, sơ đồ trạng thái từng tốn gấp đôi). Đưa lên trên cùng để thứ tự lớp y như
+//    khung vừa dựng — nền sọc của bảng vẽ sau lúc đo, không đưa lên thì che mất chữ.
+function datKhung(tf, x, yTop) {
+    tf.position = [X(x), Y(yTop)];
+    tf.zOrder(ZOrderMethod.BRINGTOFRONT);
+    return tf;
+}
+// như flow() nhưng cho khung đã đo sẵn: tràn trang thì sang trang mới rồi mới đặt
+function chayKhung(tf, x, lead, gapAfter) {
+    var h = textH(tf, lead);
+    if (y + h > BOT) addPage();
+    datKhung(tf, x, y);
+    y += h + gapAfter;
+    return tf;
+}
+
 // Xếp trang theo lưới, gốc dời về góc canvas: chứa ~280 trang (dò 27/09/2026, Illustrator 28 nhận
 // artboard trong x ≥ −7800, mép trên ≤ +8600, mép dưới ≥ −7742). Lưới cũ COLS 5 gốc 0,0 gãy ở ~40 trang
 // với lỗi AOoC (manual vệ sinh 6kg, 24/10/2026). Khung đo chữ tạm ở y = −3000 vẫn nằm trong canvas.
@@ -65,11 +112,23 @@ function FIXREFS() {
 // ── lưu .ai + .pdf trong một lệnh ──────────────────────────────────────────
 // Cuối content chỉ cần:  TOCDRAW(...) (nếu có mục lục);  var msg = XUAT(base, "Ten-file");
 var LUU_AI = true;   // make.py --nhanh gán false
+// .ai KHÔNG kèm bản PDF bên trong (đo 22/11/2026, 45 trang): lưu 0,7 s thay vì 2,2 s, file 13 MB thay vì 99 MB
+// (đỡ cả Google Drive phải đẩy lên). Mở lại sửa bằng Illustrator vẫn bình thường. Chỉ cần gán true trong
+// content khi phải Place file .ai này vào tài liệu khác, hoặc muốn xem trước trong Explorer/Bridge.
+var AI_PDF = false;
 function XUAT(base, ten) {
     var thieu = FIXREFS();
-    if (LUU_AI) doc.saveAs(new File(base + ten + ".ai"), new IllustratorSaveOptions());
+    if (LUU_AI) {
+        var so = new IllustratorSaveOptions();
+        so.pdfCompatible = AI_PDF;
+        doc.saveAs(new File(base + ten + ".ai"), so);
+    }
     var po = new PDFSaveOptions();
     po.preserveEditability = false;
+    try {   // Acrobat 7 (PDF 1.6) lưu nhanh hơn ~1/3 so với mặc định Acrobat 5, cùng dung lượng; bỏ ảnh thu nhỏ
+        po.compatibility = PDFCompatibility.ACROBAT7;   // trang nhúng trong file — trình đọc tự vẽ lấy
+        po.generateThumbnails = false;
+    } catch (e) {}
     try {   // nén ảnh để PDF gửi được qua Zalo/email (manual 3kg: 38 MB -> 2 MB)
         po.compressArt = true;
         po.colorDownsamplingMethod = DownsampleMethod.BICUBICDOWNSAMPLE;
@@ -92,6 +151,7 @@ function newDocBare() {
     doc = app.documents.add(DocumentColorSpace.RGB, W, H);
     doc.artboards[0].artboardRect = [X(0), Y(0), X(W), Y(H)];
     page = 0; y = TOP;
+    _anhDoc = doc; _anhMau = {};     // tài liệu mới: bỏ ảnh mẫu của tài liệu trước
 }
 
 // ── TRANG BÌA ──────────────────────────────────────────────────────────────
@@ -100,7 +160,7 @@ function COVER(kicker, title, subtitle, machine, footline) {
     var lg = new File(IMGDIR + LOGO);
     if (!lg.exists) lg = new File(OLDDIR + LOGO);
     if (lg.exists) {
-        var pi = doc.placedItems.add(); pi.file = lg;
+        var pi = datAnh(lg);
         var b = pi.geometricBounds, w0 = b[2] - b[0], h0 = b[1] - b[3], s = LOGO_W_COVER / w0;
         pi.width = w0 * s; pi.height = h0 * s;
         pi.position = [X(W - MR - LOGO_W_COVER), Y(92)];
@@ -114,7 +174,7 @@ function COVER(kicker, title, subtitle, machine, footline) {
 
     var mf = new File(OLDDIR + coverImage);
     if (mf.exists) {
-        var p2 = doc.placedItems.add(); p2.file = mf;
+        var p2 = datAnh(mf);
         var b2 = p2.geometricBounds, w2 = b2[2] - b2[0], h2 = b2[1] - b2[3];
         var s2 = 420 / h2; if (w2 * s2 > 330) s2 = 330 / w2;
         p2.width = w2 * s2; p2.height = h2 * s2;
@@ -137,8 +197,7 @@ function decorate() {
     var lg = new File(IMGDIR + LOGO);
     if (!lg.exists) lg = new File(OLDDIR + LOGO);
     if (lg.exists) {
-        var pi = doc.placedItems.add();
-        pi.file = lg;
+        var pi = datAnh(lg);
         var b = pi.geometricBounds, w0 = b[2] - b[0], h0 = b[1] - b[3];
         var s = LOGO_W_HEAD / w0;
         pi.width = w0 * s; pi.height = h0 * s;
@@ -147,20 +206,12 @@ function decorate() {
     if (chapterHeader !== "") {
         mkText(ML + 60, HEAD_Y - 4, CW - 60, chapterHeader, F_REG, 10, 13, C_BLUE, Justification.RIGHT);
     }
-    var f1 = doc.textFrames.add();
-    f1.contents = FOOTLINE;
-    f1.textRange.characterAttributes.textFont = app.textFonts.getByName(F_REG);
-    f1.textRange.characterAttributes.size = 9;
-    f1.textRange.characterAttributes.fillColor = C_BLUE;
+    var f1 = chuDiem(FOOTLINE, F_REG, 9, C_BLUE);
     f1.position = [X(ML), Y(FOOT_Y)];
 
     // số trang cũng là point text cùng cỡ, canh phải theo bề ngang đo được:
     // cùng đường chân chữ với dòng bản quyền (area text cũ lệch lên ~4 pt)
-    var f2 = doc.textFrames.add();
-    f2.contents = PGPREFIX + (page + 1);
-    f2.textRange.characterAttributes.textFont = app.textFonts.getByName(F_REG);
-    f2.textRange.characterAttributes.size = 9;
-    f2.textRange.characterAttributes.fillColor = C_BLUE;
+    var f2 = chuDiem(PGPREFIX + (page + 1), F_REG, 9, C_BLUE);
     var b2 = f2.geometricBounds;
     f2.position = [X(ML + CW) - (b2[2] - b2[0]), Y(FOOT_Y)];
 }
@@ -198,11 +249,7 @@ function TOCDRAW(title, prefix) {
     y += textH(h, 24) + 26;
     for (var i = 0; i < tocList.length; i++) {
         var name = tocList[i][0], pg = tocList[i][1];
-        var pt = doc.textFrames.add();          // point text để đo bề ngang
-        pt.contents = name;
-        pt.textRange.characterAttributes.textFont = app.textFonts.getByName(F_REG);
-        pt.textRange.characterAttributes.size = 11;
-        pt.textRange.characterAttributes.fillColor = C_TEXT;
+        var pt = chuDiem(name, F_REG, 11, C_TEXT);   // point text để đo bề ngang
         pt.position = [X(ML), Y(y)];
         var wb = pt.geometricBounds, wname = wb[2] - wb[0];
         mkText(ML + CW - 60, y, 60, prefix + (pg + 1), F_REG, 11, 15, C_TEXT, Justification.RIGHT);
@@ -326,16 +373,17 @@ function mkText(x, yTop, w, str, font, size, lead, color, just) {
     r.filled = false; r.stroked = false;
     var tf = doc.textFrames.areaText(r);
     var tach = boDam(str);
-    tf.contents = tach[0];
-    var ca = tf.textRange.characterAttributes;
+    var ca = tf.textRange.characterAttributes;      // gán TRƯỚC khi đổ chữ — xem chuDiem()
     ca.textFont = app.textFonts.getByName(font);
     ca.size = size;
     ca.autoLeading = false;
     ca.leading = lead;
     ca.fillColor = color;
-    try { tf.textRange.paragraphAttributes.justification = just; } catch (e) {}
+    tf.contents = tach[0];
+    var pa = tf.textRange.paragraphAttributes;      // thuộc tính đoạn: chỉ gán được khi đã có chữ
+    try { pa.justification = just; } catch (e) {}
     // tắt gạch nối tự động: bản tiếng Anh bị Illustrator chẻ từ ("sched-ule") và làm sapDong ngắt hai lần
-    try { tf.textRange.paragraphAttributes.hyphenation = false; } catch (e) {}
+    try { pa.hyphenation = false; } catch (e) {}
     if (tach[1].length) {
         var fd = app.textFonts.getByName(fontDam(font));
         for (var v = 0; v < tach[1].length; v++)
@@ -360,11 +408,7 @@ function datKhoang(tf, dau, cuoi, lam) {
 function H3TAG(tag, str, mau) {
     need(150);
     var c = mau || C_BLUE;
-    var t = doc.textFrames.add();
-    t.contents = tag;
-    t.textRange.characterAttributes.textFont = app.textFonts.getByName(F_BOLD);
-    t.textRange.characterAttributes.size = 9.5;
-    t.textRange.characterAttributes.fillColor = C_WHITE;
+    var t = chuDiem(tag, F_BOLD, 9.5, C_WHITE);
     var b = t.geometricBounds, tw = b[2] - b[0];
     var pw = tw + 12, ph = 16;
     var pill = doc.pathItems.roundedRectangle(Y(y), X(ML), pw, ph, 4, 4);
@@ -384,7 +428,7 @@ function IMG2(fa, fb, hMax, capA, capB) {
         var f = new File(IMGDIR + names[i]);
         if (!f.exists) f = new File(OLDDIR + names[i]);
         if (!f.exists) { missing.push(names[i]); items.push(null); continue; }
-        var pi = doc.placedItems.add(); pi.file = f;
+        var pi = datAnh(f);
         var b = pi.geometricBounds, w0 = b[2] - b[0], h0 = b[1] - b[3];
         items.push([pi, w0, h0]);
         rowH = Math.min(rowH, half * h0 / w0);
@@ -395,10 +439,10 @@ function IMG2(fa, fb, hMax, capA, capB) {
         items[q][0].width = items[q][1] * sq; items[q][0].height = rowH;
         items[q] = items[q][0];
     }
-    var capH = 0;
+    var capH = 0, capT = [];
     for (var k = 0; k < 2; k++) {
         var t = mkText(0, -3000, half, caps[k], F_ITAL, 9.5, 14, C_GREY, Justification.CENTER);
-        capH = Math.max(capH, textH(t, 14)); t.remove();
+        capH = Math.max(capH, textH(t, 14)); capT.push(t);      // giữ lại, dời vào chỗ bên dưới
     }
     need(rowH + capH + 16);
     for (var j = 0; j < 2; j++) {
@@ -407,7 +451,7 @@ function IMG2(fa, fb, hMax, capA, capB) {
             var bb = items[j].geometricBounds, w = bb[2] - bb[0], h = bb[1] - bb[3];
             items[j].position = [X(x0 + (half - w) / 2), Y(y + (rowH - h))];
         }
-        mkText(x0, y + rowH + 6, half, caps[j], F_ITAL, 9.5, 14, C_GREY, Justification.CENTER);
+        datKhung(capT[j], x0, y + rowH + 6);
     }
     y += rowH + 6 + capH + 12;
 }
@@ -431,11 +475,7 @@ function flow(x, w, str, font, size, lead, color, just, gapAfter) {
 
 // chữ trắng căn đúng tâm hình tròn (cx, cy tính theo hệ toạ độ trang)
 function badgeNum(str, cx, cy, size) {
-    var t = doc.textFrames.add();
-    t.contents = str;
-    t.textRange.characterAttributes.textFont = app.textFonts.getByName(F_BOLD);
-    t.textRange.characterAttributes.size = size;
-    t.textRange.characterAttributes.fillColor = C_WHITE;
+    var t = chuDiem(str, F_BOLD, size, C_WHITE);
     var b = t.geometricBounds;                 // [left, top, right, bottom]
     var w = b[2] - b[0], h = b[1] - b[3];
     t.position = [X(cx) - w / 2, Y(cy) + h / 2];
@@ -512,7 +552,7 @@ function SAFETY(kind, title, body, icons) {
     var probe = mkText(tx, y + 28, tw, body, F_REG, 10, 15, C_TEXT, Justification.LEFT);
     var bh = Math.max(textH(probe, 15), iconsH);
     var boxH = 26 + bh + 10;
-    if (y + boxH > BOT) { probe.remove(); addPage(); probe = mkText(tx, y + 28, tw, body, F_REG, 10, 15, C_TEXT, Justification.LEFT); bh = Math.max(textH(probe, 15), iconsH); boxH = 26 + bh + 10; }
+    if (y + boxH > BOT) addPage();   // khung đo giữ nguyên: cùng bề ngang nên cùng chiều cao, dời vào chỗ ở dưới
 
     var bg = doc.pathItems.rectangle(Y(y), X(ML), CW, boxH);
     bg.filled = true; bg.fillColor = rgb(250, 250, 250);
@@ -520,17 +560,13 @@ function SAFETY(kind, title, body, icons) {
     var bar = doc.pathItems.rectangle(Y(y), X(ML), CW, 22);
     bar.filled = true; bar.fillColor = col; bar.stroked = false;
 
-    var tt = doc.textFrames.add();
-    tt.contents = title;
-    tt.textRange.characterAttributes.textFont = app.textFonts.getByName(F_BOLD);
-    tt.textRange.characterAttributes.size = 11;
-    tt.textRange.characterAttributes.fillColor = txtOnBar;
+    var tt = chuDiem(title, F_BOLD, 11, txtOnBar);
     tt.position = [X(ML + (kind === "luuy" ? 10 : 30)), Y(y + 5.5)];
     tt.zOrder(ZOrderMethod.BRINGTOFRONT);
 
     var ic = new File(OLDDIR + "icon-canhbao.png");
     if (kind !== "luuy" && ic.exists) {
-        var pi = doc.placedItems.add(); pi.file = ic;
+        var pi = datAnh(ic);
         var b = pi.geometricBounds, w0 = b[2] - b[0], h0 = b[1] - b[3], s = 15 / w0;
         pi.width = w0 * s; pi.height = h0 * s;
         pi.position = [X(ML + 9), Y(y + 3.5)];
@@ -538,7 +574,7 @@ function SAFETY(kind, title, body, icons) {
     for (var k = 0; k < icons.length; k++) {
         var fi = new File(IMGDIR + icons[k]);
         if (!fi.exists) { missing.push(icons[k]); continue; }
-        var pk = doc.placedItems.add(); pk.file = fi;
+        var pk = datAnh(fi);
         var bk = pk.geometricBounds, wk = bk[2] - bk[0], hk = bk[1] - bk[3], sk = ICON_W / wk;
         pk.width = wk * sk; pk.height = hk * sk;
         pk.position = [X(ML + 12), Y(y + 30 + k * (ICON_W * 0.88 + 6))];
@@ -554,7 +590,7 @@ function IMG(fname, maxW, caption) {
     if (!f.exists) f = new File(OLDDIR + fname);
     var capH = caption ? 26 : 8;
     if (f.exists) {
-        var pi = doc.placedItems.add(); pi.file = f;
+        var pi = datAnh(f);
         var b = pi.geometricBounds, w0 = b[2] - b[0], h0 = b[1] - b[3];
         var s = maxW / w0; if (h0 * s > 330) s = 330 / h0;
         var w = w0 * s, h = h0 * s;
@@ -590,21 +626,21 @@ function IMGC(fname, maxW, caption, marks, legend) {
     if (!f.exists) f = new File(OLDDIR + fname);
     if (!f.exists) { missing.push(fname); IMG(fname, maxW, caption); return; }
 
-    var pi = doc.placedItems.add(); pi.file = f;
+    var pi = datAnh(f);
     var b = pi.geometricBounds, w0 = b[2] - b[0], h0 = b[1] - b[3];
     var s = maxW / w0; if (h0 * s > IMGC_MAXH) s = IMGC_MAXH / h0;
     var w = w0 * s, h = h0 * s;
     // đo THẬT chiều cao chú thích + từng dòng giải thích (bản tiếng Anh hay dài 2 dòng):
-    // ước theo số mục thì dòng cuối rơi sang trang sau, tách khỏi hình
-    var legH = 0, capH = 8;
+    // ước theo số mục thì dòng cuối rơi sang trang sau, tách khỏi hình. Khung đo giữ lại, dời vào chỗ ở dưới.
+    var legH = 0, capH = 8, legT = [], tc = null;
     for (var g = 0; legend && g < legend.length; g++) {
         var tg = mkText(0, -3000, CW - 24, legend[g], F_REG, 10, 14, C_TEXT, Justification.LEFT);
-        legH += textH(tg, 14) + 2; tg.remove();
+        legH += textH(tg, 14) + 2; legT.push(tg);
     }
     if (legend && legend.length) legH += 10;
     if (caption) {
-        var tc = mkText(0, -3000, CW, caption, F_ITAL, 9.5, 14, C_GREY, Justification.CENTER);
-        capH = textH(tc, 14) + 8; tc.remove();
+        tc = mkText(0, -3000, CW, caption, F_ITAL, 9.5, 14, C_GREY, Justification.CENTER);
+        capH = textH(tc, 14) + 8;
     }
     if (y + h + 6 + capH + legH > BOT) addPage();
     pi.width = w; pi.height = h;
@@ -623,9 +659,8 @@ function IMGC(fname, maxW, caption, marks, legend) {
         badgeNum(m[4], rx, ry, 8.5);
     }
     y += h + 6;
-    if (caption) flow(ML, CW, caption, F_ITAL, 9.5, 14, C_GREY, Justification.CENTER, 8);
-    for (var k = 0; legend && k < legend.length; k++)
-        flow(ML + 24, CW - 24, legend[k], F_REG, 10, 14, C_TEXT, Justification.LEFT, 2);
+    if (tc) chayKhung(tc, ML, 14, 8);
+    for (var k = 0; k < legT.length; k++) chayKhung(legT[k], ML + 24, 14, 2);
     if (legend && legend.length) y += 10;
 }
 
@@ -641,7 +676,7 @@ function STEPIMG(n, before, fname, after, iconW) {
     // đặt icon sau khối chữ, xuống dòng mới cho gọn
     y += h1 + 4;
     if (f.exists) {
-        var pi = doc.placedItems.add(); pi.file = f;
+        var pi = datAnh(f);
         var b = pi.geometricBounds, w0 = b[2] - b[0], h0 = b[1] - b[3], s = iconW / w0;
         pi.width = w0 * s; pi.height = h0 * s;
         if (y + h0 * s > BOT) addPage();
@@ -667,15 +702,21 @@ function STEPIMG(n, before, fname, after, iconW) {
 function TABLE(cols, rows, widths, opts) {
     opts = opts || {};
     var pad = 6, lead = opts.lead || 14, size = opts.size || 9.5;
-    // đo chiều cao từng hàng
-    function rowH(cells, font) {
-        var mx = 0;
+    // đo chiều cao từng hàng; trả về [chiều cao, các khung đã đo] — khung giữ lại để dời vào chỗ
+    function doHang(cells, font) {
+        var mx = 0, khung = [];
         for (var i = 0; i < cells.length; i++) {
             var t = mkText(0, -3000, widths[i] - 2 * pad, cells[i], font, size, lead, C_TEXT, Justification.LEFT);
-            var h = textH(t, lead); t.remove();
+            var h = textH(t, lead);
+            khung.push(t);
             if (h > mx) mx = h;
         }
-        return Math.max(mx + 2 * pad, font === F_REG && opts.minRow ? opts.minRow : 0);
+        return [Math.max(mx + 2 * pad, font === F_REG && opts.minRow ? opts.minRow : 0), khung];
+    }
+    function rowH(cells, font) {       // hàng tiêu đề: vẽ lại ở mỗi trang nên chỉ cần chiều cao
+        var d = doHang(cells, font);
+        for (var i = 0; i < d[1].length; i++) d[1][i].remove();
+        return d[0];
     }
     function keDoc(yTop, h) {          // vạch dọc + hai mép ngoài cho một hàng
         if (!opts.grid) return;
@@ -699,7 +740,7 @@ function TABLE(cols, rows, widths, opts) {
     keDoc(y, hH);
     y += hH;
     for (var r2 = 0; r2 < rows.length; r2++) {
-        var rh = rowH(rows[r2], F_REG);
+        var dh = doHang(rows[r2], F_REG), rh = dh[0];
         if (y + rh > BOT) {
             addPage();
             var x1 = ML;
@@ -718,7 +759,7 @@ function TABLE(cols, rows, widths, opts) {
         }
         var xx = ML;
         for (var c3 = 0; c3 < rows[r2].length; c3++) {
-            mkText(xx + pad, y + pad - 2, widths[c3] - 2 * pad, rows[r2][c3], F_REG, size, lead, C_TEXT, Justification.LEFT);
+            datKhung(dh[1][c3], xx + pad, y + pad - 2);     // nằm trên nền sọc vừa vẽ
             xx += widths[c3];
         }
         var ln = doc.pathItems.rectangle(Y(y + rh), X(ML), CW, 0.5);
@@ -732,22 +773,22 @@ function TABLE(cols, rows, widths, opts) {
 // ── hàng biển cảnh báo có chú thích bên dưới (giải thích ký hiệu ở chương 1) ──
 // ICONROW([["iso-w012.png", "Điện giật"], ...])
 function ICONROW(list) {
-    var n = list.length, cell = CW / n, iw = 46, capH = 0;
+    var n = list.length, cell = CW / n, iw = 46, capH = 0, capT = [];
     for (var m = 0; m < n; m++) {
         var t = mkText(0, -3000, cell - 8, list[m][1], F_REG, 9.5, 13, C_TEXT, Justification.CENTER);
-        capH = Math.max(capH, textH(t, 13)); t.remove();
+        capH = Math.max(capH, textH(t, 13)); capT.push(t);     // giữ lại, dời vào chỗ bên dưới
     }
     need(iw + capH + 20);
     for (var i = 0; i < n; i++) {
         var x0 = ML + i * cell;
         var f = new File(IMGDIR + list[i][0]);
         if (f.exists) {
-            var pi = doc.placedItems.add(); pi.file = f;
+            var pi = datAnh(f);
             var b = pi.geometricBounds, w0 = b[2] - b[0], h0 = b[1] - b[3], s = iw / w0;
             pi.width = w0 * s; pi.height = h0 * s;
             pi.position = [X(x0 + (cell - iw) / 2), Y(y)];
         } else missing.push(list[i][0]);
-        mkText(x0 + 4, y + iw * 0.88 + 6, cell - 8, list[i][1], F_REG, 9.5, 13, C_TEXT, Justification.CENTER);
+        datKhung(capT[i], x0 + 4, y + iw * 0.88 + 6);
     }
     y += iw * 0.88 + 6 + capH + 14;
 }
@@ -756,10 +797,10 @@ function ICONROW(list) {
 function STATEFLOW(items) {
     var bw = CW, gapv = 14;
     // đo trước chiều cao từng hộp
-    var hs = [], total = 0;
+    var hs = [], total = 0, moTa = [];
     for (var m = 0; m < items.length; m++) {
         var pr = mkText(0, -4000, bw - 210, items[m][1], F_REG, 9.5, 12, C_GREY, Justification.LEFT);
-        var hh = Math.max(38, 22 + textH(pr, 12)); pr.remove();
+        var hh = Math.max(38, 22 + textH(pr, 12)); moTa.push(pr);   // giữ lại, dời vào hộp ở dưới
         hs.push(hh); total += hh + gapv;
     }
     if (y + total > BOT) addPage();
@@ -774,7 +815,7 @@ function STATEFLOW(items) {
         badgeNum("" + (i + 1), ML + 45, y + 20, 11);
 
         mkText(ML + 66, y + 6, 200, it[0], F_BOLD, 10.5, 13, C_BLACK, Justification.LEFT);
-        mkText(ML + 66, y + 20, bw - 210, it[1], F_REG, 9.5, 12, C_GREY, Justification.LEFT);
+        datKhung(moTa[i], ML + 66, y + 20);
         mkText(ML + bw - 140, y + 12, 88, it[2], F_BOLD, 9.5, 12, C_BLUE, Justification.RIGHT);
 
         if (i < items.length - 1) {

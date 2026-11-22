@@ -2,6 +2,28 @@
 
 Đánh số theo [SemVer](https://semver.org/lang/vi/).
 
+## [1.4.0] — 2026-11-22
+
+### Nhanh hơn
+Đo trên manual 45 trang (1 339 khung chữ, 143 ảnh): dựng **~12 s → ~9 s**, lưu `.ai`
+**2,2 s / 99 MB → 0,7 s / 13 MB**. PDF so với bản cũ: đủ trang, ảnh trùng khớp, chữ lệch tối đa 0,03 pt.
+- `engine.jsx`
+  - `datAnh()`: ảnh lặp lại (logo đầu trang, biểu tượng cảnh báo) chỉ đặt từ file một lần, các lần sau
+    nhân bản (~34 ms → ~1,5 ms mỗi lần).
+  - `chuDiem()` và `mkText`: gán font, cỡ, màu **trước** khi đổ chữ, Illustrator chỉ dàn chữ một lần.
+  - `datKhung()` / `chayKhung()`: khung chữ dựng ra để đo chiều cao được giữ lại rồi dời vào chỗ, không xoá
+    đi dựng lại (bảng, chú thích ảnh, sơ đồ trạng thái, hộp cảnh báo).
+  - PDF lưu theo Acrobat 7 và bỏ ảnh thu nhỏ nhúng trong file.
+  - `.ai` không kèm bản PDF bên trong (`AI_PDF = false`). Cần Place file `.ai` vào tài liệu khác thì gán
+    `AI_PDF = true` trong content.
+- `make.py`: gọi COM thẳng bằng pywin32 (~1,2 s mỗi lượt thay vì ~2,5 s qua PowerShell). Máy không có
+  pywin32 thì vẫn chạy qua PowerShell như cũ.
+
+### Ghi chú
+- Lỗi `PARM` ở `areaText` sau khoảng 10 lượt dựng liên tiếp là lỗi của Illustrator (bản engine cũ cũng bị).
+  `make.py` tự thoát Illustrator rồi dựng lại một lần.
+- `app.textFonts.getByName` gần như không tốn thời gian, không cần cache font.
+
 ## [1.3.0] — 2026-10-31
 
 ### Thêm
